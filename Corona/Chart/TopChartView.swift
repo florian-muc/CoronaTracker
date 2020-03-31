@@ -10,79 +10,75 @@ import UIKit
 
 import Charts
 
-class TopChartView: BarChartView {
-	var isLogarithmic = false {
-		didSet {
-			self.clear()
-			self.update(animated: true)
+class TopChartView: BaseBarChartView {
+	private var colors: [UIColor] {
+		switch mode {
+		case .confirmed: return ChartColorTemplates.pastel()
+		case .active: return [.systemYellow]
+		case .recovered: return [.systemGreen]
+		case .deaths: return [.systemRed]
 		}
 	}
 
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder: aDecoder)
+	override var supportedModes: [Statistic.Kind] {
+		[.confirmed, .recovered, .deaths]
+	}
 
-//		xAxis.drawGridLinesEnabled = false
-		xAxis.drawGridLinesEnabled = false
-		xAxis.labelPosition = .bottom
-		xAxis.labelTextColor = SystemColor.secondaryLabel
-		xAxis.valueFormatter = DefaultAxisValueFormatter(block: { value, axis in
-			guard let entry = self.barData?.dataSets.first?.entryForIndex(Int(value)) as? BarChartDataEntry,
+
+	var isLogarithmic = false {
+		didSet {
+			self.chartView.clear()
+			self.update(region: nil, animated: true)
+		}
+	}
+
+	override func initializeView() {
+		super.initializeView()
+
+		chartView.xAxis.drawGridLinesEnabled = false
+		chartView.xAxis.valueFormatter = DefaultAxisValueFormatter(block: { value, axis in
+			guard let entry = self.chartView.barData?.dataSets.first?.entryForIndex(Int(value)) as? BarChartDataEntry,
 				let region = entry.data as? Region else { return value.description }
 
 			return region.localizedName.replacingOccurrences(of: " ", with: "\n")
 		})
+
 		/// Rotate labels in other languages
 		if !Locale.current.isEnglish {
-			xAxis.labelRotationAngle = 45
+			chartView.xAxis.labelRotationAngle = 45
 		}
 
-//		leftAxis.drawGridLinesEnabled = false
-		leftAxis.gridColor = .lightGray
-		leftAxis.gridLineDashLengths = [3, 3]
-		leftAxis.labelTextColor = SystemColor.secondaryLabel
-		leftAxis.valueFormatter = DefaultAxisValueFormatter() { value, axis in
-			self.isLogarithmic ? pow(10, value).kmFormatted : value.kmFormatted
+		chartView.leftAxis.valueFormatter = DefaultAxisValueFormatter() { value, axis in
+			self.isLogarithmic ? Int(pow(10, value)).kmFormatted : Int(value).kmFormatted
 		}
 
-		rightAxis.enabled = false
+		let simpleMarker = SimpleMarkerView(chartView: chartView) { (entry, highlight) in
+			guard let region = entry.data as? Region,
+				let report = region.report else { return entry.y.kmFormatted }
 
-		dragEnabled = false
-		scaleXEnabled = false
-		scaleYEnabled = false
-
-		fitBars = true
-
-		noDataTextColor = .systemGray
-		noDataFont = .systemFont(ofSize: 15)
-
-		let simpleMarker = SimpleMarkerView(chartView: self) { (entry, highlight) in
-			guard let region = entry.data as? Region else { return entry.y.kmFormatted }
-			return region.report?.stat.description ?? entry.y.kmFormatted
+			return """
+			\(L10n.Case.confirmed): \(report.stat.confirmedCountString)
+			\(L10n.Case.recovered): \(report.stat.recoveredCountString) (\(report.stat.recoveredPercent.percentFormatted))
+			\(L10n.Case.deaths): \(report.stat.deathCountString) (\(report.stat.deathPercent.percentFormatted))
+			"""
 		}
 		simpleMarker.timeout = 5
-		marker = simpleMarker
+		chartView.marker = simpleMarker
 
-		initializeLegend(legend)
+		chartView.legend.enabled = false
 	}
 
-	private func initializeLegend(_ legend: Legend) {
-		legend.textColor = SystemColor.secondaryLabel
-		legend.font = .systemFont(ofSize: 12, weight: .regular)
-		legend.form = .none
-		legend.formSize = 0
-		legend.horizontalAlignment = .center
-		legend.xEntrySpace = 0
-		legend.formToTextSpace = 0
-		legend.stackSpace = 0
-	}
+	override func update(region: Region?, animated: Bool) {
+		super.update(region: region, animated: animated)
 
-	func update(animated: Bool) {
 		let regions = DataManager.instance.topCountries
+
+		title = L10n.Chart.topCountries + (mode == .confirmed ? "" : " (\(mode))")
 
 		var entries = [BarChartDataEntry]()
 		for i in regions.indices {
 			let region = regions[i]
-			var value = Double(region.report?.stat.confirmedCount ?? 0)
+			var value = Double(region.report?.stat.number(for: mode) ?? 0)
 			if isLogarithmic {
 				value = log10(value)
 			}
@@ -93,30 +89,30 @@ class TopChartView: BarChartView {
 
 		let label = isLogarithmic ? L10n.Chart.logarithmic : L10n.Chart.topCountries
 		let dataSet = BarChartDataSet(entries: entries, label: label)
-		dataSet.colors = ChartColorTemplates.pastel()
+		dataSet.colors = colors
 
 //		dataSet.drawValuesEnabled = false
 		dataSet.valueTextColor = SystemColor.secondaryLabel
 		dataSet.valueFont = .systemFont(ofSize: 12, weight: .regular)
 		dataSet.valueFormatter = DefaultValueFormatter(block: { value, entry, dataSetIndex, viewPortHandler in
-			guard let region = entry.data as? Region else { return value.kmFormatted }
-			return region.report?.stat.confirmedCount.kmFormatted ?? value.kmFormatted
+			guard let region = entry.data as? Region else { return Int(value).kmFormatted }
+			return region.report?.stat.number(for: self.mode).kmFormatted ?? Int(value).kmFormatted
 		})
 
 		if isLogarithmic {
-			leftAxis.axisMinimum = 2
-			leftAxis.axisMaximum = 6
-			leftAxis.labelCount = 4
+			chartView.leftAxis.axisMinimum = 2
+			chartView.leftAxis.axisMaximum = 6
+			chartView.leftAxis.labelCount = 4
 		}
 		else {
-			leftAxis.resetCustomAxisMin()
-			leftAxis.resetCustomAxisMax()
+			chartView.leftAxis.resetCustomAxisMin()
+			chartView.leftAxis.resetCustomAxisMax()
 		}
 
-		data = BarChartData(dataSet: dataSet)
+		chartView.data = BarChartData(dataSet: dataSet)
 
 		if animated {
-			animate(yAxisDuration: 2, easingOption: .easeOutCubic)
+			chartView.animate(yAxisDuration: 2, easingOption: .easeOutCubic)
 		}
 	}
 }

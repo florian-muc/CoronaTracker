@@ -13,9 +13,10 @@ class RegionDataController: UITableViewController {
 	private let rows: [Row] = [
 		(type: StatsCell.self, height: 150),
 		(type: CurrentChartCell.self, height: 250),
-		(type: DeltaChartCell.self, height: 250),
+		(type: DeltaChartCell.self, height: 275),
 		(type: HistoryChartCell.self, height: 300),
-		(type: TopChartCell.self, height: 350),
+		(type: TopChartCell.self, height: 300),
+		(type: TrendlineChartCell.self, height: 350),
 		(type: UpdateTimeCell.self, height: 40),
 		(type: DataSourceCell.self, height: 50)
 	]
@@ -68,11 +69,13 @@ class RegionDataController: UITableViewController {
 		container?.update(region: region)
 	}
 
-	private func shareImage(for cell: RegionDataCell?) {
-		guard let cell = cell, let shareable = cell.shareable else { return }
+	private func createShareImage(for cell: RegionDataCell?) -> UIImage? {
+		guard let cell = cell,
+			let shareableImage = cell.shareableImage else { return nil }
 
-		let cellImage = cell.snapshot()
-		let headerImage = container!.snapshotHeader(hideTitle: shareable == .chartTop)
+		let cellImage = shareableImage
+		let hideTitle = cell is TopChartCell || cell is TrendlineChartCell
+		let headerImage = container!.snapshotHeader(hideTitle: hideTitle)
 		var logoImage = Asset.iconSmall.image
 		if #available(iOS 13.0, *) {
 			logoImage = logoImage.withTintColor(SystemColor.secondaryLabel)
@@ -89,8 +92,17 @@ class RegionDataController: UITableViewController {
 			cellImage.draw(at: .init(x: 0, y: headerImage.size.height))
 		}
 
-		var items: [Any] = [ImageItemSource(image: image, imageName: "Corona Tracker")]
-		items.append(TextItemSource(text: shareable.title))
+		return image
+	}
+
+	private func shareImage(for cell: RegionDataCell?) {
+		guard let cell = cell,
+			let image = createShareImage(for: cell) else { return }
+
+		let items: [Any] = [
+			ImageItemSource(image: image, imageName: "Corona Tracker"),
+			TextItemSource(text: cell.shareableText ?? "")
+		]
 
 		let activityController = UIActivityViewController(activityItems: items, applicationActivities: nil)
 
@@ -100,6 +112,12 @@ class RegionDataController: UITableViewController {
 			activityController.popoverPresentationController?.sourceRect = cell.bounds
 		}
 		present(activityController, animated: true, completion: nil)
+	}
+
+	private func copyImage(for cell: RegionDataCell?) {
+		guard let image = createShareImage(for: cell) else { return }
+
+		UIPasteboard.general.image = image
 	}
 }
 
@@ -116,6 +134,9 @@ extension RegionDataController {
 			cell.shareAction = {
 				self.setEditing(false, animated: true)
 				self.shareImage(for: cell)
+			}
+			cell.copyAction = {
+				self.copyImage(for: cell)
 			}
 		}
 		return cell

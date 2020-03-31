@@ -124,7 +124,10 @@ class MapController: UIViewController {
 	}
 
 	func hideRegionScreen() {
+		#if targetEnvironment(macCatalyst)
+		#else
 		panelController.move(to: .half, animated: true)
+		#endif
 	}
 
 	func showRegionOnMap(region: Region) {
@@ -227,18 +230,18 @@ class MapController: UIViewController {
 
 	@IBAction func buttonModeTapped(_ sender: Any) {
 		Menu.show(above: self, sourceView: buttonMode, width: 150, items: [
-			MenuItem(title: L10n.Case.confirmed, image: nil, selected: mode == .confirmed, action: {
+			.option(title: L10n.Case.confirmed, selected: mode == .confirmed) {
 				self.mode = .confirmed
-			}),
-			MenuItem(title: L10n.Case.active, image: nil, selected: mode == .active, action: {
+			},
+			.option(title: L10n.Case.active, selected: mode == .active) {
 				self.mode = .active
-			}),
-			MenuItem(title: L10n.Case.recovered, image: nil, selected: mode == .recovered, action: {
+			},
+			.option(title: L10n.Case.recovered, selected: mode == .recovered) {
 				self.mode = .recovered
-			}),
-			MenuItem(title: L10n.Case.deaths, image: nil, selected: mode == .deaths, action: {
+			},
+			.option(title: L10n.Case.deaths, selected: mode == .deaths) {
 				self.mode = .deaths
-			}),
+			},
 		])
 	}
 }
@@ -333,7 +336,11 @@ extension MapController: FloatingPanelControllerDelegate {
 
 class PanelLayout: FloatingPanelLayout {
 	public var initialPosition: FloatingPanelPosition {
-		return .half
+		#if targetEnvironment(macCatalyst)
+		return .full
+		#else
+		return UIDevice.current.userInterfaceIdiom == .pad ? .full : .half
+		#endif
 	}
 
 	public func insetFor(position: FloatingPanelPosition) -> CGFloat? {

@@ -47,9 +47,15 @@ extension Change {
 	public var isZero: Bool { newConfirmed == 0 && newRecovered == 0 && newDeaths == 0 }
 }
 
+extension Change: CustomStringConvertible {
+	public var description: String {
+		"Change: \(newConfirmedString) | \(newRecoveredString) | \(newDeathsString)"
+	}
+}
+
 extension Change {
 	public static func sum(subChanges: [Change]) -> Change {
-		Change(currentStat: Statistic.sum(subData: subChanges.map { $0.currentStat }),
-			   lastStat: Statistic.sum(subData: subChanges.map { $0.lastStat }))
+		Change(currentStat: Statistic.sum(subData: subChanges.map(\.currentStat)),
+			   lastStat: Statistic.sum(subData: subChanges.map(\.lastStat)))
 	}
 }

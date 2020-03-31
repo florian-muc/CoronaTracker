@@ -10,75 +10,57 @@ import UIKit
 
 import Charts
 
-class DeltaChartView: BarChartView {
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder: aDecoder)
+class DeltaChartView: BaseBarChartView {
+	override var supportedModes: [Statistic.Kind] {
+		[.confirmed, .deaths]
+	}
 
-//		xAxis.drawGridLinesEnabled = false
-		xAxis.drawGridLinesEnabled = false
-		xAxis.labelPosition = .bottom
-		xAxis.labelTextColor = SystemColor.secondaryLabel
-		xAxis.valueFormatter = DayAxisValueFormatter(chartView: self)
+	override func initializeView() {
+		super.initializeView()
 
-//		leftAxis.drawGridLinesEnabled = false
-		leftAxis.gridColor = .lightGray
-		leftAxis.gridLineDashLengths = [3, 3]
-		leftAxis.labelTextColor = SystemColor.secondaryLabel
-		leftAxis.valueFormatter = DefaultAxisValueFormatter() { value, axis in
-			value.kmFormatted
+		chartView.xAxis.drawGridLinesEnabled = false
+		chartView.xAxis.valueFormatter = DayAxisValueFormatter(chartView: chartView)
+
+		chartView.leftAxis.valueFormatter = DefaultAxisValueFormatter() { value, axis in
+			Int(value).kmFormatted
 		}
 
-		rightAxis.enabled = false
-
-		dragEnabled = false
-		scaleXEnabled = false
-		scaleYEnabled = false
-
-		fitBars = true
-
-		noDataTextColor = .systemGray
-		noDataFont = .systemFont(ofSize: 15)
-
-		marker = SimpleMarkerView(chartView: self)
-
-		initializeLegend(legend)
+		chartView.marker = SimpleMarkerView(chartView: chartView)
 	}
 
-	private func initializeLegend(_ legend: Legend) {
-		legend.textColor = SystemColor.secondaryLabel
-		legend.font = .systemFont(ofSize: 12, weight: .regular)
-		legend.form = .circle
-		legend.formSize = 12
-		legend.horizontalAlignment = .center
-		legend.setCustom(entries: [
-			LegendEntry(label: L10n.Chart.delta, form: .none, formSize: 12,
-						formLineWidth: 0, formLineDashPhase: 0, formLineDashLengths: nil, formColor: .systemBlue),
-			LegendEntry(label: "↑", form: .circle, formSize: 12,
-						formLineWidth: 0, formLineDashPhase: 0, formLineDashLengths: nil, formColor: .systemOrange),
-			LegendEntry(label: "↓", form: .circle, formSize: 12,
-						formLineWidth: 0, formLineDashPhase: 0, formLineDashLengths: nil, formColor: .systemBlue),
-		])
-	}
+	override func update(region: Region?, animated: Bool) {
+		super.update(region: region, animated: animated)
 
-	func update(series: TimeSeries?, animated: Bool) {
-		guard let series = series else {
-			data = nil
+		guard let series = region?.timeSeries else {
+			chartView.data = nil
 			return
 		}
+
+		let showNewDeaths = mode == .deaths
+
+		title = showNewDeaths ? L10n.Chart.Delta.deaths : L10n.Chart.delta
+
+		let increasingColor = showNewDeaths ? UIColor.systemRed : UIColor.systemOrange
+		chartView.legend.setCustom(entries: [
+			LegendEntry(label: "↑ " + L10n.Chart.Delta.increasing, form: .circle, formSize: 12,
+						formLineWidth: 0, formLineDashPhase: 0, formLineDashLengths: nil, formColor: increasingColor),
+			LegendEntry(label: "↓ " + L10n.Chart.Delta.decreasing, form: .circle, formSize: 12,
+						formLineWidth: 0, formLineDashPhase: 0, formLineDashLengths: nil, formColor: .systemBlue),
+		])
 
 		let changes = series.changes()
 		let dates = changes.keys.sorted().drop { changes[$0]?.isZero == true }
 
 		var entries = [BarChartDataEntry]()
 		for date in dates {
-			let value = Double(changes[date]!.newConfirmed)
+			let value = Double(showNewDeaths ? changes[date]!.newDeaths : changes[date]!.newConfirmed)
 			let entry = BarChartDataEntry(x: Double(date.referenceDays), y: value)
 			entries.append(entry)
 		}
 
 		var colors = [UIColor]()
 		for i in entries.indices.reversed() {
-			var color = UIColor.systemOrange
+			var color = increasingColor
 			if i > 0 {
 				let currentEntry = entries[i]
 				let previousEntry = entries[i - 1]
@@ -95,10 +77,10 @@ class DeltaChartView: BarChartView {
 
 		dataSet.drawValuesEnabled = false
 
-		data = BarChartData(dataSet: dataSet)
+		chartView.data = BarChartData(dataSet: dataSet)
 
 		if animated {
-			animate(yAxisDuration: 2)
+			chartView.animate(yAxisDuration: 2)
 		}
 	}
 }

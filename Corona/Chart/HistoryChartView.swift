@@ -10,52 +10,24 @@ import UIKit
 
 import Charts
 
-class HistoryChartView: LineChartView {
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder: aDecoder)
+class HistoryChartView: BaseLineChartView {
+	override func initializeView() {
+		super.initializeView()
 
-		xAxis.gridColor = .lightGray
-		xAxis.gridLineDashLengths = [3, 3]
-		xAxis.labelPosition = .bottom
-		xAxis.labelTextColor = SystemColor.secondaryLabel
-		xAxis.valueFormatter = DayAxisValueFormatter(chartView: self)
+		chartView.xAxis.valueFormatter = DayAxisValueFormatter(chartView: chartView)
 
-//		leftAxis.drawGridLinesEnabled = false
-		leftAxis.gridColor = .lightGray
-		leftAxis.gridLineDashLengths = [3, 3]
-		leftAxis.labelTextColor = SystemColor.secondaryLabel
-		leftAxis.valueFormatter = DefaultAxisValueFormatter() { value, axis in
-			value.kmFormatted
-		}
-
-		rightAxis.enabled = false
-
-		dragEnabled = false
-		scaleXEnabled = false
-		scaleYEnabled = false
-
-		noDataTextColor = .systemGray
-		noDataFont = .systemFont(ofSize: 15)
-
-		marker = SimpleMarkerView(chartView: self)
-
-		initializeLegend(legend)
+		chartView.marker = SimpleMarkerView(chartView: chartView)
 	}
 
-	private func initializeLegend(_ legend: Legend) {
-		legend.textColor = SystemColor.secondaryLabel
-		legend.font = .systemFont(ofSize: 12, weight: .regular)
-		legend.form = .circle
-		legend.formSize = 12
-		legend.horizontalAlignment = .center
-		legend.xEntrySpace = 10
-	}
+	override func update(region: Region?, animated: Bool) {
+		super.update(region: region, animated: animated)
 
-	func update(series: TimeSeries?, animated: Bool) {
-		guard let series = series else {
-			data = nil
+		guard let series = region?.timeSeries else {
+			chartView.data = nil
 			return
 		}
+
+		title = L10n.Chart.history
 
 		let dates = series.series.keys.sorted().drop { series.series[$0]?.isZero == true }
 		let confirmedEntries = dates.map {
@@ -77,11 +49,11 @@ class HistoryChartView: LineChartView {
 			let dataSet = LineChartDataSet(entries: entries[i], label: labels[i])
 			dataSet.mode = .cubicBezier
 			dataSet.drawValuesEnabled = false
-			dataSet.colors = [colors[i]]
+			dataSet.colors = [colors[i].withAlphaComponent(0.75)]
 
 //			dataSet.drawCirclesEnabled = false
-			dataSet.circleRadius = confirmedEntries.count < 60 ? 3 : 2
-			dataSet.circleColors = [colors[i].withAlphaComponent(0.75)]
+			dataSet.circleRadius = confirmedEntries.count < 60 ? 2 : 1.8
+			dataSet.circleColors = [colors[i]]
 
 			dataSet.drawCircleHoleEnabled = false
 			dataSet.circleHoleRadius = 1
@@ -92,10 +64,10 @@ class HistoryChartView: LineChartView {
 			dataSets.append(dataSet)
 		}
 
-		data = LineChartData(dataSets: dataSets)
+		chartView.data = LineChartData(dataSets: dataSets)
 
 		if animated {
-			animate(xAxisDuration: 2)
+			chartView.animate(xAxisDuration: 2)
 		}
 	}
 }

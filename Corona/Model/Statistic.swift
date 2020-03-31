@@ -34,8 +34,19 @@ extension Statistic {
 }
 
 extension Statistic {
-	public enum Kind {
+	public enum Kind: CustomStringConvertible {
 		case confirmed, active, recovered, deaths
+
+		public static let all: [Kind] = [.confirmed, .active, .recovered, .deaths]
+
+		public var description: String {
+			switch self {
+			case .confirmed: return L10n.Case.confirmed
+			case .active: return L10n.Case.active
+			case .recovered: return L10n.Case.recovered
+			case .deaths: return L10n.Case.deaths
+			}
+		}
 	}
 
 	public func number(for kind: Kind) -> Int {
@@ -50,11 +61,7 @@ extension Statistic {
 
 extension Statistic: CustomStringConvertible {
 	public var description: String {
-		"""
-		\(L10n.Case.confirmed): \(confirmedCountString)
-		\(L10n.Case.recovered): \(recoveredCountString) (\(recoveredPercent.percentFormatted))
-		\(L10n.Case.deaths): \(deathCountString) (\(deathPercent.percentFormatted))
-		"""
+		"Statistic: \(confirmedCountString) | \(recoveredCountString) | \(deathCountString)"
 	}
 }
 

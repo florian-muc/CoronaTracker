@@ -74,10 +74,10 @@ extension DataManager {
 			}
 
 			/// Don't download the time serieses if they are not old enough. Currently, they are updated from the data source every 24 hours.
-			if self.world.timeSeries?.lastUpdate?.ageDays ?? 0 < 2 {
-				self.update(regions: regions, timeSeriesRegions: self.regions(of: .province), completion: completion)
-				return
-			}
+//			if self.world.timeSeries?.lastUpdate?.ageDays ?? 0 < 2 {
+//				self.update(regions: regions, timeSeriesRegions: self.regions(of: .province), completion: completion)
+//				return
+//			}
 
 			JHURepoDataService.instance.fetchTimeSerieses { (timeSeriesRegions, error) in
 				self.update(regions: regions, timeSeriesRegions: timeSeriesRegions, completion: completion)
@@ -93,11 +93,7 @@ extension DataManager {
 		/// Countries
 		var countries = [Region]()
 		countries.append(contentsOf: regions.filter({ !$0.isProvince }))
-		Dictionary(grouping: regions.filter({ region in
-			region.isProvince
-		}), by: { region in
-			region.parentName
-		}).forEach { (key, value) in
+		Dictionary(grouping: regions.filter(\.isProvince), by: \.parentName).forEach { (key, value) in
 			if let countryRegion = Region.join(subRegions: value) {
 				countries.append(countryRegion)
 			}
