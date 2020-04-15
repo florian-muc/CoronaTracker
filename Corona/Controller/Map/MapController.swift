@@ -1,8 +1,6 @@
 //
-//  ViewController.swift
-//  Corona
-//
-//  Created by Mohammad on 3/2/20.
+//  Corona Tracker
+//  Created by Mhd Hejazi on 3/2/20.
 //  Copyright © 2020 Samabox. All rights reserved.
 //
 
@@ -14,9 +12,16 @@ import FloatingPanel
 class MapController: UIViewController {
 	private static let updateInterval: TimeInterval = 60 * 5 /// 5 mins
 
-	static var instance: MapController!
+	static var shared: MapController!
 
-	private var cityZoomLevel: CGFloat { (view.bounds.width > 1000) ? 5 : 4 }
+	@IBOutlet private var mapView: MKMapView!
+	@IBOutlet private var effectView: UIVisualEffectView!
+	@IBOutlet private var buttonUpdate: UIButton!
+	@IBOutlet private var viewOptions: UIView!
+	@IBOutlet private var effectViewOptions: UIVisualEffectView!
+	@IBOutlet private var buttonMode: UIButton!
+
+	private var cityZoomLevel: CGFloat { (view.bounds.width > 1_000) ? 5 : 4 }
 	private var allAnnotations: [RegionAnnotation] = []
 	private var countryAnnotations: [RegionAnnotation] = []
 	private var currentAnnotations: [RegionAnnotation] = []
@@ -30,22 +35,15 @@ class MapController: UIViewController {
 		}
 	}
 
-	@IBOutlet var mapView: MKMapView!
-	@IBOutlet var effectView: UIVisualEffectView!
-	@IBOutlet var buttonUpdate: UIButton!
-	@IBOutlet var viewOptions: UIView!
-	@IBOutlet var effectViewOptions: UIVisualEffectView!
-	@IBOutlet var buttonMode: UIButton!
-
 	override func viewDidLoad() {
 		super.viewDidLoad()
 
-		MapController.instance = self
+		MapController.shared = self
 
 		initializeView()
 		initializeBottomSheet()
 
-		DataManager.instance.load { _ in
+		DataManager.shared.load { _ in
 			self.update()
 			self.downloadIfNeeded()
 		}
@@ -71,13 +69,15 @@ class MapController: UIViewController {
 	}
 
 	private func initializeView() {
-		effectViewOptions.layer.cornerRadius = 10
+		effectViewOptions.layer.cornerRadius = effectViewOptions.bounds.height / 2
 		viewOptions.enableShadow()
 
 		buttonUpdate.layer.cornerRadius = buttonUpdate.bounds.height / 2
+		buttonUpdate.isHidden = true
 
 		if #available(iOS 13.0, *) {
 			effectView.effect = UIBlurEffect(style: .systemThinMaterial)
+			effectViewOptions.effect = UIBlurEffect(style: .systemUltraThinMaterial)
 		}
 
 		if #available(iOS 11.0, *) {
@@ -86,8 +86,10 @@ class MapController: UIViewController {
 							 forAnnotationViewWithReuseIdentifier: RegionAnnotationView.reuseIdentifier)
 		}
 
-		/// Workaround for hiding the iPhone frame that appears on app start
 		#if targetEnvironment(macCatalyst)
+		viewOptions.isHidden = true
+
+		/// Workaround for hiding the iPhone frame that appears on app start
 		mapView.isHidden = true
 		DispatchQueue.main.async {
 			self.mapView.isHidden = false
@@ -109,9 +111,9 @@ class MapController: UIViewController {
 		panelController.surfaceView.backgroundColor = .clear
 		panelController.surfaceView.contentView.backgroundColor = .clear
 
-		#if targetEnvironment(macCatalyst)
-		panelController.additionalSafeAreaInsets = .init(top: 0, left: 0, bottom: 10, right: 0)
-		#endif
+		if #available(iOS 11.0, *), view.safeAreaInsets.bottom == 0 {
+			panelController.additionalSafeAreaInsets = .init(top: 0, left: 0, bottom: 15, right: 0)
+		}
 	}
 
 	func updateRegionScreen(region: Region?) {
@@ -147,11 +149,11 @@ class MapController: UIViewController {
 	}
 
 	private func update() {
-		allAnnotations = DataManager.instance.regions(of: .province)
+		allAnnotations = DataManager.shared.regions(of: .province)
 			.filter({ $0.report?.stat.number(for: mode) ?? 0 > 0 })
 			.map({ RegionAnnotation(region: $0, mode: mode) })
 
-		countryAnnotations = DataManager.instance.regions(of: .country)
+		countryAnnotations = DataManager.shared.regions(of: .country)
 			.filter({ $0.report?.stat.number(for: mode) ?? 0 > 0 })
 			.map({ RegionAnnotation(region: $0, mode: mode) })
 
@@ -173,15 +175,14 @@ class MapController: UIViewController {
 		}
 		regionPanelController.isUpdating = true
 
-		DataManager.instance.download { success in
+		DataManager.shared.download { success in
 			DispatchQueue.main.async {
 				self.regionPanelController.isUpdating = false
 
 				if success {
 					self.hideHUD()
 					self.update()
-				}
-				else {
+				} else {
 					if showSpinner {
 						self.showMessage(title: L10n.Data.errorTitle,
 										 message: L10n.Data.errorMessage)
@@ -201,7 +202,18 @@ class MapController: UIViewController {
 		}
 	}
 
-	@IBAction func buttonUpdateTapped(_ sender: Any) {
+	func showShareButtons() {
+		showRegionScreen()
+		regionPanelController.regionDataController.setEditing(true, animated: true)
+	}
+
+	func showSearchScreen() {
+		regionPanelController.isSearching = true
+	}
+
+	// MARK: - Actions
+
+	@IBAction private func buttonUpdateTapped(_ sender: Any) {
 		let alertController = UIAlertController.init(
 			title: L10n.App.newVersionTitle,
 			message: L10n.App.newVersionMessage(App.updateURL.absoluteString),
@@ -222,7 +234,7 @@ class MapController: UIViewController {
 	}
 
 	@IBAction func buttonModeTapped(_ sender: Any) {
-		Menu.show(above: self, sourceView: buttonMode, width: 150, items: [
+		Menu.show(above: self, sourceView: buttonMode, items: [
 			.option(title: L10n.Case.confirmed, selected: mode == .confirmed) {
 				self.mode = .confirmed
 			},
@@ -234,7 +246,7 @@ class MapController: UIViewController {
 			},
 			.option(title: L10n.Case.deaths, selected: mode == .deaths) {
 				self.mode = .deaths
-			},
+			}
 		])
 	}
 }
@@ -252,7 +264,6 @@ extension MapController: MKMapViewDelegate {
 				for: annotation) as? RegionAnnotationView else { return nil }
 			annotationView = view
 		} else {
-			/// iOS 10
 			let view = mapView.dequeueReusableAnnotationView(
 				withIdentifier: RegionAnnotationView.reuseIdentifier) as? RegionAnnotationView
 			annotationView = view ?? RegionAnnotationView(annotation: annotation,
@@ -273,7 +284,7 @@ extension MapController: MKMapViewDelegate {
 	}
 
 	func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-		var annotationToSelect: MKAnnotation? = nil
+		var annotationToSelect: MKAnnotation?
 
 		if mapView.zoomLevel > cityZoomLevel {
 			if currentAnnotations.count != allAnnotations.count {
@@ -284,8 +295,7 @@ extension MapController: MKMapViewDelegate {
 					mapView.addAnnotations(self.currentAnnotations)
 				}
 			}
-		}
-		else {
+		} else {
 			if currentAnnotations.count != countryAnnotations.count {
 				mapView.superview?.transition {
 					annotationToSelect = mapView.selectedAnnotations.first
@@ -311,77 +321,20 @@ extension MapController: MKMapViewDelegate {
 }
 
 extension MapController: FloatingPanelControllerDelegate {
-	func floatingPanel(_ vc: FloatingPanelController, layoutFor newCollection: UITraitCollection) -> FloatingPanelLayout? {
+	func floatingPanel(_ controller: FloatingPanelController,
+					   layoutFor newCollection: UITraitCollection) -> FloatingPanelLayout? {
+
 		(newCollection.userInterfaceIdiom == .pad ||
 			newCollection.verticalSizeClass == .compact) ? LandscapePanelLayout() : PanelLayout()
 	}
 
-	func floatingPanelWillBeginDragging(_ vc: FloatingPanelController) {
-		let currentPosition = vc.position
+	func floatingPanelWillBeginDragging(_ controller: FloatingPanelController) {
+		let currentPosition = controller.position
 
 		// currentPosition == .full means deceleration will start from top to bottom (i.e. user dragging the panel down)
 		if currentPosition == .full, regionPanelController.isSearching {
 			// Reset to region container's default mode then hide the keyboard
 			self.regionPanelController.isSearching = false
 		}
-	}
-}
-
-class PanelLayout: FloatingPanelLayout {
-	public var initialPosition: FloatingPanelPosition {
-		#if targetEnvironment(macCatalyst)
-		return .full
-		#else
-		return UIDevice.current.userInterfaceIdiom == .pad ? .full : .half
-		#endif
-	}
-
-	public func insetFor(position: FloatingPanelPosition) -> CGFloat? {
-		switch position {
-		case .full: return 16
-		case .half: return 215
-		case .tip: return 68
-		default: return nil
-		}
-	}
-
-	func prepareLayout(surfaceView: UIView, in view: UIView) -> [NSLayoutConstraint] {
-		if #available(iOS 11.0, *) {
-			return [
-				surfaceView.leftAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leftAnchor, constant: 0.0),
-				surfaceView.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: 0.0),
-			]
-		} else {
-			/// iOS 10
-			return [
-				surfaceView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 0.0),
-				surfaceView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: 0.0),
-			]
-		}
-	}
-
-	func backdropAlphaFor(position: FloatingPanelPosition) -> CGFloat {
-		return position == .full ? 0.3 : 0.0
-	}
-}
-
-class LandscapePanelLayout: PanelLayout {
-	override func prepareLayout(surfaceView: UIView, in view: UIView) -> [NSLayoutConstraint] {
-		if #available(iOS 11.0, *) {
-			return [
-				surfaceView.leftAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leftAnchor, constant: 8.0),
-				surfaceView.widthAnchor.constraint(equalToConstant: 400),
-			]
-		} else {
-			/// iOS 10
-			return [
-				surfaceView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 8.0),
-				surfaceView.widthAnchor.constraint(equalToConstant: 400),
-			]
-		}
-	}
-
-	override func backdropAlphaFor(position: FloatingPanelPosition) -> CGFloat {
-		return 0.0
 	}
 }

@@ -1,8 +1,6 @@
 //
-//  XYMarkerView.swift
-//  Corona
-//
-//  Created by Mohammad on 3/5/20.
+//  Corona Tracker
+//  Created by Mhd Hejazi on 3/5/20.
 //  Copyright © 2020 Samabox. All rights reserved.
 //
 
@@ -33,27 +31,26 @@ public class SimpleMarkerView: BalloonMarker {
 		super.init(color: UIColor.darkGray.withAlphaComponent(0.9),
 				   font: .systemFont(ofSize: 13),
 				   textColor: UIColor.white.withAlphaComponent(0.9),
-				   insets: UIEdgeInsets(top: 8, left: 10, bottom: 23, right: 10))
+				   insets: UIEdgeInsets(top: 8, left: 20, bottom: 19, right: 20))
 
 		self.chartView = chartView
-		self.arrowSize = CGSize(width: 15, height: 15)
 		self.minimumSize = CGSize(width: 80, height: 40)
+		self.roundCorners = true
 	}
 
 	public override func refreshContent(entry: ChartDataEntry, highlight: Highlight) {
 		var result: String
 		if let contentCallback = contentCallback {
 			result = contentCallback(entry, highlight)
-		}
-		else {
+		} else {
 			result = ""
 			if let xValueFormatter = xValueFormatter {
-				let x = xValueFormatter.stringForValue(entry.x, axis: nil)
-				result += "\(x): "
+				let value = xValueFormatter.stringForValue(entry.x, axis: nil)
+				result += "\(value): "
 			}
 			if let yValueFormatter = yValueFormatter {
-				let y = yValueFormatter.stringForValue(entry.y, axis: nil)
-				result += "\(y)"
+				let value = yValueFormatter.stringForValue(entry.y, axis: nil)
+				result += "\(value)"
 			}
 		}
 		setLabel(result)

@@ -1,8 +1,6 @@
 //
-//  Region.swift
-//  Corona
-//
-//  Created by Mohammad on 3/4/20.
+//  Corona Tracker
+//  Created by Mhd Hejazi on 3/4/20.
 //  Copyright © 2020 Samabox. All rights reserved.
 //
 
@@ -68,6 +66,7 @@ public class Region: Codable {
 }
 
 extension Region {
+	public var isWorld: Bool { level == .world }
 	public var isCountry: Bool { level == .country }
 	public var isProvince: Bool { level == .province }
 	public var longName: String { isProvince ? "\(name), \(parentName ?? "-")" : name }
@@ -114,7 +113,7 @@ extension Region {
 extension Region: Equatable {
 	public static func == (lhs: Region, rhs: Region) -> Bool {
 		(lhs.level == rhs.level && lhs.parentName == rhs.parentName && lhs.name == rhs.name) ||
-			(lhs.location == rhs.location && !lhs.location.isZero)
+			(lhs.level == rhs.level && lhs.location == rhs.location && !lhs.location.isZero)
 	}
 }
 

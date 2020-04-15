@@ -1,14 +1,21 @@
 //
-//  RegionPanelController.swift
-//  Corona
-//
-//  Created by Mohammad on 3/5/20.
+//  Corona Tracker
+//  Created by Mhd Hejazi on 3/5/20.
 //  Copyright © 2020 Samabox. All rights reserved.
 //
 
 import UIKit
 
 class RegionPanelController: UIViewController {
+	@IBOutlet private var effectViewBackground: UIVisualEffectView!
+	@IBOutlet private var effectViewHeader: UIVisualEffectView!
+	@IBOutlet private var viewHeader: UIView!
+	@IBOutlet private var labelTitle: UILabel!
+	@IBOutlet private var labelUpdated: UILabel!
+	@IBOutlet private var buttonMenu: UIButton!
+	@IBOutlet private var buttonSearch: UIButton!
+	@IBOutlet private var searchBar: UISearchBar!
+
 	private lazy var buttonDone: UIButton = {
 		let button = UIButton(type: .system)
 		button.titleLabel?.font = .boldSystemFont(ofSize: 17)
@@ -41,10 +48,10 @@ class RegionPanelController: UIViewController {
 				self.regionDataController.view.isHidden = self.isSearching
 
 				if self.isSearching {
-					self.regionListController.regions = DataManager.instance.allRegions().sorted().reversed()
+					self.regionListController.regions = DataManager.shared.allRegions().sorted().reversed()
 					self.searchBar.text = ""
 					self.searchBar.becomeFirstResponder()
-					MapController.instance.showRegionScreen()
+					MapController.shared.showRegionScreen()
 				} else {
 					self.regionListController.regions = []
 					self.searchBar.resignFirstResponder()
@@ -52,15 +59,6 @@ class RegionPanelController: UIViewController {
 			}
 		}
 	}
-
-	@IBOutlet var effectViewBackground: UIVisualEffectView!
-	@IBOutlet var effectViewHeader: UIVisualEffectView!
-	@IBOutlet var viewHeader: UIView!
-	@IBOutlet var labelTitle: UILabel!
-	@IBOutlet var labelUpdated: UILabel!
-	@IBOutlet var buttonMenu: UIButton!
-	@IBOutlet var buttonSearch: UIButton!
-	@IBOutlet var searchBar: UISearchBar!
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
@@ -90,8 +88,7 @@ class RegionPanelController: UIViewController {
 	override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
 		if segue.destination is RegionDataController {
 			regionDataController = segue.destination as? RegionDataController
-		}
-		else if segue.destination is RegionListController {
+		} else if segue.destination is RegionListController {
 			regionListController = segue.destination as? RegionListController
 		}
 	}
@@ -108,7 +105,7 @@ class RegionPanelController: UIViewController {
 
 	func update(region: Region?) {
 		viewHeader.transition(duration: 0.25) {
-			self.labelTitle.text = region?.localizedLongName ?? "N/A"
+			self.labelTitle.text = region?.localizedLongName ?? Region.world.localizedName
 		}
 
 		updateTime()
@@ -140,23 +137,28 @@ class RegionPanelController: UIViewController {
 }
 
 extension RegionPanelController {
-	@IBAction func buttonSearchTapped(_ sender: Any) {
+
+	// MARK: - Actions
+
+	@IBAction private func buttonSearchTapped(_ sender: Any) {
 		isSearching = true
 	}
 
-	@IBAction func buttonMenuTapped(_ sender: Any) {
-		Menu.show(above: self, sourceView: buttonMenu, width: 175, items: [
+	@IBAction private func buttonMenuTapped(_ sender: Any) {
+		Menu.show(above: self, sourceView: buttonMenu, items: [
 			.regular(title: L10n.Menu.update, image: Asset.reload.image) {
-				MapController.instance.downloadIfNeeded()
+				MapController.shared.downloadIfNeeded()
 			},
 			.regular(title: L10n.Menu.share, image: Asset.share.image) {
-				MapController.instance.showRegionScreen()
-				self.regionDataController.setEditing(true, animated: true)
-			},
+				MapController.shared.showShareButtons()
+			}
 		])
 	}
 
-	@objc func buttonDoneTapped(_ sender: Any) {
+	// MARK: - Actions
+
+	@objc
+	func buttonDoneTapped(_ sender: Any) {
 		setEditing(false, animated: true)
 		regionDataController.setEditing(false, animated: true)
 	}
@@ -168,7 +170,7 @@ extension RegionPanelController: UISearchBarDelegate, UITableViewDelegate {
 	}
 
 	func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-		var regions: [Region] = DataManager.instance.allRegions().sorted().reversed()
+		var regions: [Region] = DataManager.shared.allRegions().sorted().reversed()
 
 		let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 		if !query.isEmpty {
@@ -188,6 +190,6 @@ extension RegionPanelController: UISearchBarDelegate, UITableViewDelegate {
 
 		isSearching = false
 
-		MapController.instance.showRegionOnMap(region: region)
+		MapController.shared.showRegionOnMap(region: region)
 	}
 }

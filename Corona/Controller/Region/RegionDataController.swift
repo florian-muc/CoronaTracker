@@ -1,8 +1,6 @@
 //
-//  RegionDataController.swift
-//  Corona
-//
-//  Created by Mohammad on 3/4/20.
+//  Corona Tracker
+//  Created by Mhd Hejazi on 3/4/20.
 //  Copyright © 2020 Samabox. All rights reserved.
 //
 
@@ -11,21 +9,22 @@ import UIKit
 class RegionDataController: UITableViewController {
 	private typealias Row = (type: RegionDataCell.Type, height: CGFloat)
 	private let allRows: [Row] = [
-		(type: StatsCell.self, height: 150),
+		(type: StatsCell.self, height: 135),
 		(type: CurrentChartCell.self, height: 250),
 		(type: DeltaChartCell.self, height: 275),
 		(type: HistoryChartCell.self, height: 300),
 		(type: TopChartCell.self, height: 300),
 		(type: TrendlineChartCell.self, height: 350),
 		(type: UpdateTimeCell.self, height: 40),
-		(type: DataSourceCell.self, height: 50)
+		(type: DataSourceCell.self, height: 40),
+		(type: AuthorInfoCell.self, height: 40)
 	]
 	private var currentRows: [Row] = []
 
 	var region: Region? {
 		didSet {
 			if region == nil {
-				region = DataManager.instance.world
+				region = DataManager.shared.world
 			}
 		}
 	}
@@ -52,7 +51,7 @@ class RegionDataController: UITableViewController {
 
 	func update() {
 		if region == nil {
-			region = DataManager.instance.world
+			region = DataManager.shared.world
 		}
 
 		if region?.timeSeries == nil {
@@ -74,7 +73,7 @@ class RegionDataController: UITableViewController {
 			let shareableImage = cell.shareableImage else { return nil }
 
 		let cellImage = shareableImage
-		let hideTitle = cell is TopChartCell || cell is TrendlineChartCell
+		let hideTitle = cell is TopChartCell && region?.isWorld != true
 		let headerImage = container!.snapshotHeader(hideTitle: hideTitle)
 		var logoImage = Asset.iconSmall.image
 		if #available(iOS 13.0, *) {
@@ -99,19 +98,7 @@ class RegionDataController: UITableViewController {
 		guard let cell = cell,
 			let image = createShareImage(for: cell) else { return }
 
-		let items: [Any] = [
-			ImageItemSource(image: image, imageName: "Corona Tracker"),
-			TextItemSource(text: cell.shareableText ?? "")
-		]
-
-		let activityController = UIActivityViewController(activityItems: items, applicationActivities: nil)
-
-		if UIDevice.current.userInterfaceIdiom == .pad {
-			activityController.modalPresentationStyle = .popover
-			activityController.popoverPresentationController?.sourceView = cell
-			activityController.popoverPresentationController?.sourceRect = cell.bounds
-		}
-		present(activityController, animated: true, completion: nil)
+		ShareManager.shared.share(image: image, text: cell.shareableText, sourceView: cell)
 	}
 
 	private func copyImage(for cell: RegionDataCell?) {
@@ -150,14 +137,17 @@ extension RegionDataController {
 		false
 	}
 
-	override func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
+	override func tableView(_ tableView: UITableView,
+							editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
 		.none
 	}
 
 	@available(iOS 11.0, *)
-	override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+	override func tableView(_ tableView: UITableView,
+							trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+
 		let cell = tableView.cellForRow(at: indexPath) as? RegionDataCell
-		let action = UIContextualAction(style: .normal, title: nil) { action, sourceView, completion in
+		let action = UIContextualAction(style: .normal, title: nil) { _, _, completion in
 			completion(true)
 			self.shareImage(for: cell)
 		}

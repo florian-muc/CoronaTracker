@@ -1,8 +1,6 @@
 //
-//  RegionAnnotationView.swift
-//  Corona
-//
-//  Created by Mohammad on 3/4/20.
+//  Corona Tracker
+//  Created by Mhd Hejazi on 3/4/20.
 //  Copyright © 2020 Samabox. All rights reserved.
 //
 
@@ -40,8 +38,8 @@ class RegionAnnotationView: MKAnnotationView {
 
 		let value = CGFloat(number ?? 0)
 		let level = log10(value + 10) * 2
-		let brightness = max(0, 255 - level * 40) / 255;
-		let saturation = brightness > 0 ? 1 : max(0, 255 - ((level * 40) - 255)) / 255;
+		let brightness = max(0, 255 - level * 40) / 255
+		let saturation = brightness > 0 ? 1 : max(0, 255 - ((level * 40) - 255)) / 255
 		return UIColor(red: saturation, green: brightness, blue: brightness * 0.4, alpha: 0.8)
 	}
 
@@ -62,13 +60,13 @@ class RegionAnnotationView: MKAnnotationView {
 							attributes: [.foregroundColor: UIColor.systemOrange, .font: boldFont]))
 
 		string.append(.init(string: "\n" + (region?.report?.stat.activeCountString ?? ""),
-							attributes: [.foregroundColor : UIColor.systemYellow, .font: boldFont]))
+							attributes: [.foregroundColor: UIColor.systemYellow, .font: boldFont]))
 
 		string.append(.init(string: "\n" + (region?.report?.stat.recoveredCountString ?? ""),
-							attributes: [.foregroundColor : UIColor.systemGreen, .font: boldFont]))
+							attributes: [.foregroundColor: UIColor.systemGreen, .font: boldFont]))
 
 		string.append(.init(string: "\n" + (region?.report?.stat.deathCountString ?? ""),
-							attributes: [.foregroundColor : UIColor.systemRed, .font: boldFont]))
+							attributes: [.foregroundColor: UIColor.systemRed, .font: boldFont]))
 
 		return string
 	}
@@ -90,7 +88,7 @@ class RegionAnnotationView: MKAnnotationView {
 			}
 
 			configure()
-			
+
 			/// Ensure that the report text is set each time the annotation is updated
 			detailAccessoryView?.detailsLabel?.attributedText = detailsString
 		}
@@ -99,16 +97,23 @@ class RegionAnnotationView: MKAnnotationView {
 	private lazy var rightAccessoryView: UIView? = {
 		let button = UIButton(type: .detailDisclosure)
 		button.addAction {
-			MapController.instance.updateRegionScreen(region: self.region)
-			MapController.instance.showRegionScreen()
+			MapController.shared.updateRegionScreen(region: self.region)
+			MapController.shared.showRegionScreen()
 		}
 		return button
 	}()
-	override var rightCalloutAccessoryView: UIView? { get { rightAccessoryView } set {} }
+
+	override var rightCalloutAccessoryView: UIView? {
+		get { rightAccessoryView }
+		set { _ = newValue }
+	}
 
 	private lazy var detailAccessoryView: DetailsView? = { DetailsView() }()
 
-	override var detailCalloutAccessoryView: UIView? { get { detailAccessoryView } set {} }
+	override var detailCalloutAccessoryView: UIView? {
+		get { detailAccessoryView }
+		set { _ = newValue }
+	}
 
 	override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
 		super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -125,8 +130,7 @@ class RegionAnnotationView: MKAnnotationView {
 			self.countLabel.text = number?.groupingFormatted
 			self.countLabel.font = .boldSystemFont(ofSize: 13 * max(1, log(self.mapZoomLevel - 2)))
 			self.countLabel.alpha = 1
-		}
-		else {
+		} else {
 			self.countLabel.alpha = 0
 		}
 
@@ -174,51 +178,5 @@ extension RegionAnnotationView { // Pressable view
 		super.touchesCancelled(touches, with: event)
 
 		setTouched(false)
-	}
-}
-
-private class DetailsView: UIView {
-	private lazy var titleLabel: UILabel! = {
-		let label = UILabel()
-		label.textColor = .systemGray
-		label.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .footnote), size: 0)
-		label.text = "\(L10n.Case.confirmed):\n\(L10n.Case.active):\n\(L10n.Case.recovered):\n\(L10n.Case.deaths):"
-		label.numberOfLines = 0
-		label.translatesAutoresizingMaskIntoConstraints = false
-		return label
-	}()
-
-	lazy var detailsLabel: UILabel! = {
-		let label = UILabel()
-		label.font = UIFont(descriptor: .preferredFontDescriptor(withTextStyle: .footnote), size: 0)
-		label.numberOfLines = 0
-		label.translatesAutoresizingMaskIntoConstraints = false
-		return label
-	}()
-
-	override var forFirstBaselineLayout: UIView { titleLabel }
-	override var forLastBaselineLayout: UIView { titleLabel }
-
-	init() {
-		super.init(frame: .zero)
-
-		initializeView()
-	}
-
-	required init?(coder: NSCoder) {
-		fatalError("init(coder:) has not been implemented")
-	}
-
-	private func initializeView() {
-		addSubview(titleLabel)
-		titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor).isActive = true
-		titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
-		titleLabel.heightAnchor.constraint(equalTo: heightAnchor).isActive = true
-
-		addSubview(detailsLabel)
-		detailsLabel.trailingAnchor.constraint(equalTo: trailingAnchor).isActive = true
-		detailsLabel.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
-
-		titleLabel.trailingAnchor.constraint(equalTo: detailsLabel.leadingAnchor, constant: -5).isActive = true
 	}
 }
